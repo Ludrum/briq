@@ -140,4 +140,5 @@ what I needed, and the app is sideloaded and Android only.
 
 ## License
 
-[GNU GPL v3](LICENSE).
+Briq's source code is licensed under the [GNU GPL v3](LICENSE). The bundled
+Android fonts retain their separate [SIL Open Font License 1.1](FONT-LICENSES.md).

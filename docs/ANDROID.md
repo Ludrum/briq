@@ -99,6 +99,6 @@ border *and* weight. One channel is never enough.
 
 Wix Madefor Display, KoHo and Outfit ship as TTFs in
 `app/src/main/res/font/`, all under the [SIL Open Font License
-1.1](https://openfontlicense.org/). They are bundled rather than downloaded
+1.1](../FONT-LICENSES.md). They are bundled rather than downloaded
 because the app has to render correctly on a network where the Pi — and
 possibly everything else — is unreachable.
