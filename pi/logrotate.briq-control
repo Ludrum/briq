@@ -1,0 +1,10 @@
+/var/log/briq-control/*.log {
+    weekly
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 briq briq
+    su briq briq
+}

@@ -1,0 +1,27 @@
+#!/bin/bash
+# Briq CLI wrapper.
+#
+# Reads the 0600 secrets file as root, then normally drops to the
+# unprivileged 'briq' user so state files it writes have the same ownership
+# as those written by the controller service.
+#
+# Exception: add-client edits /opt/briq-control/clients.conf, which is
+# deliberately root-owned so the briq user cannot modify its own scripts or
+# config. That one subcommand therefore stays root.
+set -euo pipefail
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "briqctl must run as root: sudo briqctl $*" >&2
+    exit 1
+fi
+
+set -a
+# shellcheck disable=SC1091
+. /etc/briq-control/controller.env
+set +a
+
+if [ "${1:-}" = "add-client" ]; then
+    exec /usr/bin/python3 /opt/briq-control/briqctl.py "$@"
+fi
+
+exec setpriv --reuid=briq --regid=briq --clear-groups      /usr/bin/python3 /opt/briq-control/briqctl.py "$@"

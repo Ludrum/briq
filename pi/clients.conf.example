@@ -1,0 +1,33 @@
+# Which devices the Briq profiles apply to.
+#
+# Copy this file to `clients.conf` (same directory) before first use.
+# `clients.conf` is gitignored, because the names of your devices are yours.
+#
+# One AdGuard Home client NAME per line. Every device NOT listed here is never
+# affected by a profile - it keeps resolving through the Pi exactly as it did
+# before, with whatever AdGuard filtering you have configured for the
+# household, which Briq neither adds to nor removes.
+#
+# Register devices by their ROUTER-RESERVED IPv4 ADDRESS:
+#
+#   sudo briqctl add-client my-phone   10.0.0.50
+#   sudo briqctl add-client my-tablet  10.0.0.51
+#   sudo briqctl add-client my-desktop 10.0.0.52
+#
+# That registers the client in AdGuard Home and appends its name below.
+#
+# Do NOT use a MAC address. AdGuard Home can only match a client by MAC when
+# it is itself the network's DHCP server, which it is not and must not be.
+# A MAC-only client matches nothing, so the brick would appear configured
+# while doing nothing. This was measured, not assumed - see docs/SETUP.md.
+#
+# Do NOT use an address that is not reserved in your router. The router could
+# hand it to a guest's device later and brick a device that is not yours.
+#
+# Only addresses listed on the AdGuard client match. A query arriving from
+# any other address - notably a rotating temporary IPv6 address - is treated
+# as an unknown client and bypasses the brick entirely. This is why DNS must
+# reach the Pi over IPv4 and no DNSv6 server should be advertised.
+#
+# While this file lists no clients, every profile except `unbricked` is
+# refused on purpose, so a rule can never be applied without a scope.

@@ -1,0 +1,66 @@
+# Profile: social
+# Blocks mainstream social networks for BRICKED CLIENTS ONLY.
+# Every other device on the LAN is unaffected by this file.
+#
+# Syntax: one bare domain per line. The controller expands each into
+#   ||<domain>^$client=<bricked clients>
+# which matches the domain and all its subdomains, for those clients only.
+#
+# Lines starting with # are comments. Blank lines ignored.
+
+# Stop browsers resolving their DNS-over-HTTPS provider, which would let them
+# bypass the Pi entirely. See doh-bootstrap.list for what this does and does
+# not cover.
+@include doh-bootstrap
+
+# --- Instagram ---
+instagram.com
+cdninstagram.com
+ig.me
+                        # instagram.com covers i.instagram.com (the native
+                        # app API host), so the app fails to load its feed.
+
+# --- Facebook / Messenger ---
+facebook.com
+fbcdn.net
+fb.com
+fbsbx.com
+facebook.net
+messenger.com
+                        # NOTE: whatsapp.com / whatsapp.net are deliberately
+                        # NOT blocked. WhatsApp is commonly needed for family
+                        # and emergency contact. Add them here yourself if you
+                        # actually want messaging cut off.
+                        # meta.com is also left out: it is corporate//login
+                        # infrastructure and blocking it has odd side effects.
+
+# --- TikTok ---
+tiktok.com
+tiktokcdn.com
+tiktokv.com
+tiktokcdn-us.com
+byteoversea.com
+ibytedtos.com
+musical.ly
+                        # ByteDance uses several rotating CDN domains. The
+                        # ones above cover the current app; if TikTok still
+                        # loads, check the AdGuard query log for the client
+                        # and add what you see rather than guessing.
+
+# --- X / Twitter ---
+twitter.com
+x.com
+twimg.com
+t.co
+                        # t.co is X's link shortener. Blocking it breaks
+                        # links shared FROM X in other apps too. That is
+                        # usually desirable here, but it is a side effect.
+
+# --- Reddit ---
+reddit.com
+redd.it
+redditmedia.com
+redditstatic.com
+                        # redditstatic.com serves CSS/JS. Blocking it makes
+                        # old.reddit.com render as unstyled text rather than
+                        # failing outright, which is intentional friction.

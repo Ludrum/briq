@@ -1,0 +1,52 @@
+@fragment
+# DoH bootstrap blocking - INCLUDED BY OTHER PROFILES, not selectable itself.
+#
+# Browsers that use DNS-over-HTTPS must first resolve their DoH provider's
+# hostname using normal DNS. Denying that lookup pushes them back onto the
+# system resolver, which is the Pi.
+#
+# LIMITS - read before relying on this:
+#   - A browser configured with a hard-coded DoH IP address never performs a
+#     lookup, so there is nothing here to block. This closes the common case,
+#     not every case.
+#   - Firefox honours the use-application-dns.net canary only in its
+#     automatic/default mode. If DoH is switched on deliberately, it ignores
+#     the canary completely.
+#   - This is DNS denial, not a firewall. The Pi is not the gateway, so it
+#     cannot stop outbound traffic to a DoH endpoint on port 443.
+# Treat this as a safety net for a browser you forgot, not as permission to
+# turn DoH back on.
+#
+# SAFE FOR THE PI ITSELF: these rules are emitted with $client= scoping for
+# bricked devices only. AdGuard's own upstream (dns10.quad9.net) is resolved
+# from 127.0.0.1, which is not a bricked client, so the Pi's own resolution
+# is unaffected. Verified after deployment.
+
+# --- Cloudflare (Chrome, Edge and Firefox default) ---
+cloudflare-dns.com
+                        # also covers mozilla.cloudflare-dns.com,
+                        # chrome.cloudflare-dns.com, security. and family.
+one.one.one.one
+
+# --- Google ---
+dns.google
+                        # Blocks the DoH endpoint and the hostname used by
+                        # Android Private DNS. google.com is NOT affected.
+
+# --- Quad9 ---
+dns.quad9.net
+dns10.quad9.net
+
+# --- Other common providers ---
+dns.adguard-dns.com
+dns.nextdns.io
+doh.opendns.com
+doh.cleanbrowsing.org
+doh.dns.sb
+doh.pub
+dns.alidns.com
+
+# --- Firefox canary ---
+use-application-dns.net
+                        # Firefox disables DoH by itself when this name fails
+                        # to resolve, but only while DoH is left on automatic.

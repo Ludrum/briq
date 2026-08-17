@@ -1,0 +1,10 @@
+# Profile: unbricked
+# Intentionally empty.
+#
+# Applying this profile writes an empty BRIQ MANAGED block, which removes
+# every Briq rule while leaving all of your other AdGuard Home user rules,
+# filter lists, clients, rewrites and settings untouched.
+#
+# If you also run AdGuard's blocklists, they are NOT affected by this file.
+# They are an optional AdGuard feature, unrelated to Briq, and independent of
+# whichever profile is active.

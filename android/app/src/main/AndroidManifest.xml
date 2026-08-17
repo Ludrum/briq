@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- The phone still works without NFC; it just loses the tag path. -->
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
+    <application
+        android:name=".BriqApp"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.Briq"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:allowBackup="false"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:windowSoftInputMode="adjustResize">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              This is what removes the two taps.
+
+              NFC tag dispatch tries NDEF_DISCOVERED *before* generic
+              ACTION_VIEW link handling, and when exactly one activity
+              matches it launches straight into it - no app chooser, no
+              "open this link?" prompt. That ordering is the only reason
+              this works: these are bare-IP http URLs, so App Links
+              verification is impossible and ACTION_VIEW would always
+              disambiguate.
+
+              The host/port/path must match the tag byte for byte. A
+              mismatch does not error - dispatch silently falls through to
+              the browser, which looks exactly like the app being broken.
+            -->
+            <intent-filter android:priority="100">
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:scheme="http"
+                    android:host="${briqLanHost}"
+                    android:port="${briqPort}"
+                    android:pathPrefix="/unlock" />
+            </intent-filter>
+
+            <!--
+              Private scheme for the rewritten tag.
+
+              An http URI is in principle claimable by any browser, so tag
+              dispatch can end up ambiguous. Nothing but this app can claim
+              briq://, which makes the match unambiguous. Paired with an
+              Android Application Record on the tag itself, dispatch to this
+              package is guaranteed rather than merely likely.
+
+              The trade is that the tag stops working on a phone without the
+              app installed - the printed QR sheet remains the fallback for
+              that, and it still carries http URLs.
+            -->
+            <intent-filter android:priority="100">
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="briq" android:host="unlock" />
+            </intent-filter>
+
+            <!--
+              Per-profile tags in the private scheme.
+
+              Same instructions as the http tags below, but zero-touch: an
+              http URI on a tag is in principle any browser's, so Android
+              disambiguates and the scan costs a confirmation. Nothing but
+              this app can claim briq://, so dispatch is unique and immediate.
+
+              briq://escalate/<profile> carries no token at all. It can only
+              tighten - the Pi refuses the rest - so unlike a select or toggle
+              tag it is not a credential lying on a desk.
+            -->
+            <intent-filter android:priority="100">
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="briq" android:host="escalate" />
+                <data android:scheme="briq" android:host="select" />
+                <data android:scheme="briq" android:host="toggle" />
+            </intent-filter>
+
+            <!-- Also reachable as a normal deep link, e.g. from a shortcut. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="briq" android:host="unlock" />
+                <data android:scheme="briq" android:host="escalate" />
+                <data android:scheme="briq" android:host="select" />
+                <data android:scheme="briq" android:host="toggle" />
+            </intent-filter>
+
+            <!-- The older per-profile tags keep working if any are still written. -->
+            <intent-filter android:priority="100">
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="http" android:host="${briqLanHost}"
+                      android:port="${briqPort}" android:pathPrefix="/toggle" />
+                <data android:scheme="http" android:host="${briqLanHost}"
+                      android:port="${briqPort}" android:pathPrefix="/select" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".ApplyService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+    </application>
+</manifest>

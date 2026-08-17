@@ -1,0 +1,6 @@
+# Profile: deep-focus
+# Union of social and video. Defined by inclusion so the two source lists
+# stay the single place you edit domains - do not paste domains in here.
+
+@include social
+@include video

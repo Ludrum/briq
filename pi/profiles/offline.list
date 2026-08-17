@@ -1,0 +1,58 @@
+# Profile: offline
+# DNS-denies EVERYTHING for the bricked clients except the allowlist below.
+#
+# !! THIS IS NOT A FIREWALL !!
+# DNS denial only stops name lookups. On the bricked devices the following
+# still work and this is expected, not a bug:
+#   - already-open connections, until they are closed
+#   - anything cached in the OS/browser DNS cache until the TTL expires
+#   - apps that connect to hard-coded IP addresses
+#   - VPNs, Tor, and apps using DNS-over-HTTPS/TLS to their own resolver
+#   - iCloud Private Relay / Android Private DNS
+#   - offline/downloaded content, and cellular data on the phone
+#
+# The catch-all below uses the wildcard form. The @allow entries are emitted
+# as @@ exception rules, which take priority over the block in AdGuard.
+
+@blockall
+
+# --- Emergency / infrastructure allowlist ---
+# Keep this SHORT and justified. Everything here stays reachable while offline.
+
+@allow fritz.box
+                        # Router admin UI. Without this you cannot reach the
+                        # router by name to undo anything. fritz.box is the
+                        # AVM FRITZ!Box name; replace it with your own router's
+                        # local name (routerlogin.net, tplinkwifi.net, ...).
+@allow raspberrypi.local
+                        # Add your Pi's own <hostname>.local here too if you
+                        # changed the hostname.
+@allow briq.home
+                        # The Pi itself, so the controller status page and the
+                        # QR/NFC confirmation links keep working. Without this
+                        # you could not switch back OUT of offline from a phone.
+                        # The QR/NFC codes use the raw IP and need no DNS at
+                        # all - briq.home is convenience only, so a DNS
+                        # problem can never lock you out of the escape hatch.
+@allow local
+                        # mDNS/.local name resolution on the LAN.
+@allow fritz.nas
+@allow fritz.repeater
+                        # Other local names your router serves, harmless and
+                        # occasionally needed to reach network hardware.
+                        # Delete these two if you have no FRITZ! hardware.
+
+# --- Time sync ---
+@allow pool.ntp.org
+@allow ntp.org
+@allow time.cloudflare.com
+@allow time.apple.com
+@allow time.windows.com
+                        # Without working NTP, devices can drift and then fail
+                        # TLS certificate validation, which turns a temporary
+                        # focus block into a confusing broken-internet state.
+
+# --- Deliberately NOT allowlisted ---
+# Push notification services (APNs, FCM) are blocked in this profile. That is
+# the point: no notifications. Emergency phone calls and SMS go over the
+# cellular network and are completely unaffected by any of this.

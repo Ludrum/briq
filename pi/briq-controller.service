@@ -1,0 +1,56 @@
+[Unit]
+Description=Briq profile controller (LAN-only)
+Documentation=https://github.com/Ludrum/briq
+After=network-online.target AdGuardHome.service
+Wants=network-online.target
+# Not Requires=: if AdGuard dies, the controller should stay up so the
+# status page can still report the failure instead of vanishing.
+After=nss-lookup.target
+
+[Service]
+Type=simple
+User=briq
+Group=briq
+ExecStart=/usr/bin/python3 /opt/briq-control/controller.py
+Restart=on-failure
+RestartSec=5s
+
+# Secrets are read by systemd as root and passed in the environment, so the
+# file itself stays 0600 root:root and is never readable by the service user.
+EnvironmentFile=/etc/briq-control/controller.env
+
+# --- sandboxing ---
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Only these paths are writable.
+ReadWritePaths=/var/lib/briq-control /var/log/briq-control
+ReadOnlyPaths=/opt/briq-control
+
+# Modest limits for a 512 MB Pi.
+MemoryMax=64M
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target

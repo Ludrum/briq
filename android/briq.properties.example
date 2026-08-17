@@ -1,0 +1,24 @@
+# Where the Briq app looks for the briq-control Pi.
+#
+#   cp briq.properties.example briq.properties
+#   # then edit briq.properties
+#
+# briq.properties is gitignored: your addresses are yours. If it is missing,
+# the build falls back to this example file so the project still compiles —
+# but the placeholder addresses below reach nothing, so set your own.
+#
+# These values are compiled into the APK. They land in BuildConfig, in the
+# NFC intent filters in the manifest, and in the cleartext allowlist in
+# network_security_config.xml, which is why they live in one place.
+
+# The Pi's reserved address on your LAN. Required.
+# Use the IP, not a hostname: the `offline` profile denies DNS, and a
+# hostname would stop resolving exactly when you need the way out.
+briq.lanHost=192.168.1.2
+
+# The Pi's Tailscale address, so the app still reaches it away from home.
+# Leave blank if you do not use Tailscale — the app then shows only one host.
+briq.tailscaleHost=
+
+# Controller port. Must match BRIQ_PORT in the Pi's controller.env.
+briq.port=8088

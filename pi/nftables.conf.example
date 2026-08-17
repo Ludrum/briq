@@ -1,0 +1,198 @@
+#!/usr/sbin/nft -f
+#
+# Briq firewall.  Install to /etc/nftables.conf.
+#
+# ---------------------------------------------------------------------------
+# EDIT BEFORE USE. Every value marked CHANGE ME below is specific to your
+# network. Search this file for "CHANGE ME"; there are four places.
+# ---------------------------------------------------------------------------
+#
+# This assumes there is no pre-existing firewall on the Pi (no iptables rules,
+# no nft ruleset, ufw/firewalld absent). Check with `sudo nft list ruleset`
+# before installing, so this does not silently displace an existing model.
+#
+# Intent: DNS, the AdGuard UI and the controller are reachable from the
+# trusted LAN, and from a named list of your own Tailscale devices. Nothing
+# here is reachable from the internet - and your router's own stateful
+# firewall is a second layer in front of this.
+#
+# IPv6 note: only ULA (fd00::/64) and link-local are trusted. Global
+# addresses are deliberately NOT trusted because the ISP prefix rotates, so
+# a GUA-based allowlist would be wrong within days. Clients should use the
+# Pi's ULA address for DNS.
+#
+# This file flushes ONLY its own table, never the whole ruleset. tailscaled
+# installs its own ts-* chains in separate tables; a global `flush ruleset`
+# here would delete them on every nftables restart and silently break
+# Tailscale until tailscaled next reconciled.
+
+table inet briq
+delete table inet briq
+
+table inet briq {
+    # CHANGE ME (1/4): your LAN subnet.
+    set trusted_v4 {
+        type ipv4_addr
+        flags interval
+        elements = { 192.168.1.0/24 }
+    }
+
+    set trusted_v6 {
+        type ipv6_addr
+        flags interval
+        elements = { fd00::/64, fe80::/10 }
+    }
+
+    # Tailnet addresses allowed to reach this Pi's services.
+    #
+    # Only relevant if you follow docs/TAILSCALE.md. If you do not use
+    # Tailscale, leave both sets empty and the tailscale0 rules below never
+    # match anything.
+    #
+    # A tailnet may be SHARED with other accounts, so unlike your own LAN it
+    # cannot be trusted wholesale. Without this list, every device in the
+    # tailnet could reach the controller on 8088 - including /escalate, which
+    # is deliberately unauthenticated - and the AdGuard admin UI on 3000.
+    #
+    # Listed by address rather than by Tailscale ACL on purpose: the ACL
+    # policy is tailnet-wide, so a mistake there affects every account sharing
+    # the tailnet. This file affects only this Pi.
+    #
+    # Tailscale IPs are assigned per device and stable, and WireGuard drops
+    # packets whose source does not match the authenticated peer, so a source
+    # match here cannot be forged the way a LAN source address could.
+    #
+    # CHANGE ME (2/4): run `tailscale status` and put each of YOUR devices'
+    # 100.x address here and its fd7a: address in the set below.
+    set tailnet_mine_v4 {
+        type ipv4_addr
+        elements = {
+            100.64.0.1,     # example-laptop -- replace or delete
+        }
+    }
+
+    set tailnet_mine_v6 {
+        type ipv6_addr
+        elements = {
+            fd7a:115c:a1e0::1,      # example-laptop -- replace or delete
+        }
+    }
+
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        ct state established,related accept
+        ct state invalid drop
+        iif lo accept
+
+        # ICMP must stay open. Dropping ICMPv6 breaks neighbour discovery
+        # and path MTU, which looks like random network failure.
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # DHCP / DHCPv6 client replies
+        udp sport 67 udp dport 68 accept
+        udp sport 547 udp dport 546 accept
+
+        # SSH - keep this above everything else that could be edited later
+        ip saddr @trusted_v4 tcp dport 22 accept
+        ip6 saddr @trusted_v6 tcp dport 22 accept
+
+        # DNS for the whole LAN. The Pi is the household resolver, so this must
+        # stay open for every device, not just the bricked ones.
+        ip saddr @trusted_v4 udp dport 53 accept
+        ip saddr @trusted_v4 tcp dport 53 accept
+        ip6 saddr @trusted_v6 udp dport 53 accept
+        ip6 saddr @trusted_v6 tcp dport 53 accept
+
+        # AdGuard Home admin UI
+        ip saddr @trusted_v4 tcp dport 3000 accept
+        ip6 saddr @trusted_v6 tcp dport 3000 accept
+
+        # Briq controller
+        ip saddr @trusted_v4 tcp dport 8088 accept
+        ip6 saddr @trusted_v6 tcp dport 8088 accept
+
+        # mDNS so <hostname>.local keeps resolving on the LAN
+        ip saddr @trusted_v4 udp dport 5353 accept
+        ip6 saddr @trusted_v6 udp dport 5353 accept
+
+        # --- Tailscale ---------------------------------------------------
+        #
+        # WireGuard listener. Packets that fail authentication are dropped
+        # by WireGuard itself without a reply, so this is safe to expose.
+        # Without it, peers can still connect but are forced onto a DERP
+        # relay, which costs latency.
+        udp dport 41641 accept
+
+        # Services over the tunnel. Two conditions, both required:
+        #
+        #   iifname tailscale0  - proves the packet really arrived through
+        #                         the encrypted tunnel, so a LAN host cannot
+        #                         reach these rules by forging a 100.x source
+        #   @tailnet_mine_*     - proves it came from one of MY devices, not
+        #                         from the other account sharing this tailnet
+        iifname "tailscale0" ip saddr @tailnet_mine_v4 udp dport 53 accept
+        iifname "tailscale0" ip saddr @tailnet_mine_v4 tcp dport 53 accept
+        iifname "tailscale0" ip saddr @tailnet_mine_v4 tcp dport 22 accept
+        iifname "tailscale0" ip saddr @tailnet_mine_v4 tcp dport 3000 accept
+        iifname "tailscale0" ip saddr @tailnet_mine_v4 tcp dport 8088 accept
+
+        iifname "tailscale0" ip6 saddr @tailnet_mine_v6 udp dport 53 accept
+        iifname "tailscale0" ip6 saddr @tailnet_mine_v6 tcp dport 53 accept
+        iifname "tailscale0" ip6 saddr @tailnet_mine_v6 tcp dport 22 accept
+        iifname "tailscale0" ip6 saddr @tailnet_mine_v6 tcp dport 3000 accept
+        iifname "tailscale0" ip6 saddr @tailnet_mine_v6 tcp dport 8088 accept
+
+        counter comment "briq-dropped-input"
+    }
+
+    chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+
+        # Convenience: http://briq.home (port 80) reaches the controller on
+        # 8088, so the port does not have to be typed. The rewrite happens
+        # before the input hook, so the existing 8088 accept rule covers it
+        # and the controller keeps running unprivileged on a high port.
+        #
+        # Nothing else listens on port 80. If you ever add a web server here,
+        # remove these two rules first.
+        ip saddr @trusted_v4 tcp dport 80 counter redirect to :8088
+        ip6 saddr @trusted_v6 tcp dport 80 counter redirect to :8088
+
+        # Same convenience over the tunnel, so http://briq.<your-tailnet>.ts.net
+        # works without a port from anywhere. Scoped to your own devices to
+        # match the input chain - redirecting someone else's port 80 to a
+        # controller they are then denied would just look like a hang.
+        iifname "tailscale0" ip saddr @tailnet_mine_v4 tcp dport 80 counter redirect to :8088
+        iifname "tailscale0" ip6 saddr @tailnet_mine_v6 tcp dport 80 counter redirect to :8088
+    }
+
+    chain natoutput {
+        type nat hook output priority dstnat; policy accept;
+
+        # The prerouting chain above only sees traffic arriving from other
+        # hosts. This makes http://briq.home work from the Pi itself too,
+        # which is what makes local troubleshooting possible.
+        #
+        # CHANGE ME (3/4): the Pi's own reserved LAN address.
+        ip daddr 192.168.1.2 tcp dport 80 counter redirect to :8088
+        ip daddr 127.0.0.1 tcp dport 80 counter redirect to :8088
+        # CHANGE ME (4/4): the Pi's static ULA, if you configured one (§IPv6
+        # in docs/SETUP.md). Delete this line if you did not.
+        ip6 daddr fd00::53 tcp dport 80 counter redirect to :8088
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+
+        # Deliberately closed. Opening this is what would be required to run
+        # the Pi as a Tailscale exit node or subnet router; neither is in
+        # use, so forwarding stays denied.
+        counter comment "briq-dropped-forward"
+    }
+
+    chain output {
+        type filter hook output priority filter; policy accept;
+    }
+}

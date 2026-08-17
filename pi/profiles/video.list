@@ -1,0 +1,40 @@
+# Profile: video
+# Blocks YouTube for BRICKED CLIENTS ONLY, while deliberately keeping the
+# rest of Google (search, Gmail, Drive, Maps, Photos, Android services)
+# working. That is why this list names YouTube-specific hosts instead of
+# anything broad like googleapis.com or gstatic.com.
+
+# Stop browsers resolving their DNS-over-HTTPS provider, which would let them
+# bypass the Pi entirely. See doh-bootstrap.list for what this does and does
+# not cover.
+@include doh-bootstrap
+
+# --- YouTube front end ---
+youtube.com
+youtu.be
+youtube-nocookie.com
+yt.be
+
+# --- YouTube static assets and thumbnails ---
+ytimg.com
+ggpht.com
+                        # ggpht.com serves channel avatars and is used almost
+                        # exclusively by YouTube, so it is safe to block here.
+
+# --- YouTube media delivery ---
+googlevideo.com
+                        # This is the actual video stream CDN. Blocking it is
+                        # what stops playback even when the UI partly loads.
+
+# --- YouTube API (narrowly scoped subdomains of googleapis.com) ---
+youtubei.googleapis.com
+youtubeembeddedplayer.googleapis.com
+                        # IMPORTANT: only these two googleapis.com subdomains
+                        # are blocked. Never add googleapis.com itself - it
+                        # would break Play Store, Maps, sign-in and most
+                        # Android and iOS apps on the bricked devices.
+
+# --- YouTube Music ---
+music.youtube.com
+                        # Already covered by youtube.com above; listed
+                        # explicitly so it is obvious it is intended.
