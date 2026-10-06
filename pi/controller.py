@@ -90,16 +90,6 @@ for _n in TRUSTED:
     except ValueError:
         print("ignoring invalid trusted net %r" % _n, file=sys.stderr)
 
-# Other LAN apps on this Pi can't have port 80, because nftables sends all of
-# it here. BRIQ_HOST_REDIRECTS="deal.watch=8090,dealwatch.home=8090" makes a
-# request for one of those host names bounce to that app's own port, so the
-# bare name still works in a browser. Empty by default.
-HOST_REDIRECTS = {}
-for _r in os.environ.get("BRIQ_HOST_REDIRECTS", "").split(","):
-    _host, _, _port = _r.strip().partition("=")
-    if _host and _port.isdigit():
-        HOST_REDIRECTS[_host.lower()] = int(_port)
-
 # A double tap on an NFC tag must not toggle twice and land back where it
 # started. Within this window a repeated toggle of the same profile is a no-op.
 TOGGLE_DEBOUNCE_S = 12
@@ -647,23 +637,8 @@ class Handler(BaseHTTPRequestHandler):
                 "<a class=btn href='/status'>Back to status</a>"
                 % (note, sched_rows_html(nonce), form))
 
-    def host_redirect(self):
-        """Send requests for another app's host name to that app's port."""
-        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].lower().rstrip(".")
-        port = HOST_REDIRECTS.get(host)
-        if not port:
-            return False
-        self.send_response(302)
-        self.send_header("Location", "http://%s:%d%s" % (host, port, self.path))
-        self.send_header("Content-Length", "0")
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        return True
-
     def do_GET(self):
         if not self.gate():
-            return
-        if self.host_redirect():
             return
         path = self.path.split("?")[0]
 
